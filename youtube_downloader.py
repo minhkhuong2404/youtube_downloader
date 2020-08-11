@@ -57,7 +57,7 @@ class YouTubeStats:
         print("==================================================== " + '\n')
 
 
-api_key = "AIzaSyCPaakCku8IgW4jJR8ivOEiMb2rWHp3Kos"
+api_key = ['Your API Key']
 
 link_file = "link.csv"
 with open(link_file, 'r') as f:
