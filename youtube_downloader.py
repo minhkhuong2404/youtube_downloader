@@ -1,11 +1,20 @@
 import json
 import re
-import urllib.request
+import os
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
-from numpy.core import long
+from numpy._core import long
 from pytube import YouTube
 import pytube
+from dotenv import load_dotenv
+from google_auth_oauthlib.flow import InstalledAppFlow
+import google.oauth2.credentials
+import google_auth_oauthlib.flow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
+load_dotenv()
 
 class Helper:
     def __init__(self):
@@ -16,13 +25,19 @@ class Helper:
         return title.lower()
 
     def id_from_url(self, url: str):
-        return pytube.extract.video_id(url)
+        return url.split("?v=")[1]
 
 
 class YouTubeStats:
-    def __init__(self, url: str):
-        self.json_url = urllib.request.urlopen(url)
-        self.data = json.loads(self.json_url.read())
+    def __init__(self, url: str, youtube):
+        try:
+          url_id = url.split("id=")[1]
+          self.data = youtube.videos().list(part='snippet,contentDetails,statistics', id=url_id).execute()
+
+          print(self.data)
+        except HTTPError as e:
+          print(e)
+          return
 
     def print_data(self):
         return self.data
@@ -56,8 +71,20 @@ class YouTubeStats:
         YouTube(youtube_str).streams.get_highest_resolution().download(filename=title_video)
         print("==================================================== " + '\n')
 
+    def get_authenticated_service():
+      flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
+      credentials = flow.run_local_server()
+      return build(API_SERVICE_NAME, API_VERSION, credentials = credentials)
 
-api_key = ['Your API Key']
+
+
+api_key = os.getenv("API_KEY")
+CLIENT_SECRETS_FILE = 'client_secrets.json'
+SCOPES = ['https://www.googleapis.com/auth/youtube']
+API_SERVICE_NAME = 'youtube'
+API_VERSION = 'v3'
+
+ACTIONS = ('get', 'list', 'set')
 
 link_file = "link.csv"
 with open(link_file, 'r') as f:
@@ -70,7 +97,8 @@ helper = Helper()
 for youtube_url in content:
     video_id = helper.id_from_url(youtube_url)
     url = f"https://www.googleapis.com/youtube/v3/videos?id={video_id}&key={api_key}&part=snippet,contentDetails,statistics,status"
-    yt_stats = YouTubeStats(url)
+    youtube = YouTubeStats.get_authenticated_service()
+    yt_stats = YouTubeStats(url, youtube)
 
     title = yt_stats.get_video_title()
 
@@ -100,3 +128,4 @@ for youtube_url in content:
         f.write(description)
 
     yt_stats.download_video(youtube_url, title)
+    print("==================================================== " + '\n')

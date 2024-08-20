@@ -1,20 +1,37 @@
 from math import ceil
+from pydub import AudioSegment
 
 import speech_recognition as sr
 
-r = sr.Recognizer()
+def process(filepath, chunksize=600_000):
+    #0: load mp3
+    sound = AudioSegment.from_mp3(filepath)
 
-for i in range(38, 41):
-    audio = f"video9/video9-{i}.wav"
+    #1: split file into 60s chunks
+    def divide_chunks(sound, chunksize):
+        # looping till length l
+        for i in range(0, len(sound), chunksize):
+            yield sound[i:i + chunksize]
+    chunks = list(divide_chunks(sound, chunksize))
+    print(f"{len(chunks)} chunks of {chunksize/1000}s each")
 
-    with sr.AudioFile(audio) as source:
-        audio = r.record(source)
-        print('Done! ' + "video9-" + str(i) + ".wav")
+    r = sr.Recognizer()
+    #2: per chunk, save to wav, then read and run through recognize_google()
+    string_index = {}
+    for index,chunk in enumerate(chunks):
+        temp = 'temp.wav'
+        chunk.export(temp, format='wav')
+        with sr.AudioFile(temp) as source:
+            audio = r.record(source)
 
-    try:
-        text = r.recognize_google(audio)
-        with open('video9/video9_new.txt', 'a') as f:
-            f.write(text)
+        s = r.recognize_google(audio, language="en-US")
+        string_index[index] = s
+        print(f"Chunk {index}: {s}")
+        break
+    return ' '.join([string_index[i] for i in range(len(string_index))])
 
-    except Exception as e:
-        print(e)
+audio_file_name = 'audio.mp3'
+text = process(audio_file_name)
+# write to file
+with open('audio_generated.txt', 'w') as f:
+		f.write(text)

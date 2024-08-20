@@ -1,0 +1,7 @@
+venv
+video*.*
+.env
+client_secret*.json
+*.mp3
+*.wav
+*generated.txt
